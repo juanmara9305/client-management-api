@@ -33,7 +33,6 @@ public class ClientDto {
 
     public ClientDto() {}
 
-    // --- Mapping from entity to DTO ---
     public static ClientDto fromEntity(Client client) {
     	if (client == null) {
     		throw new IllegalArgumentException("Client cannot be null");
@@ -48,14 +47,12 @@ public class ClientDto {
         return dto;
     }
 
-    // --- Mapping from DTO to entity ---
     public Client toEntity() {
         Client client = new Client();
         client.setId(this.id);
         client.setName(this.name);
         client.setPhone(this.phone);
         client.setEmail(this.email);
-        // dateAdded and sharedKey will be set in the service
         return client;
     }
     
@@ -65,16 +62,11 @@ public class ClientDto {
                       .collect(Collectors.toList());
     }
 
-    /**
-     * Convert a list of DTOs to a list of Client entities.
-     */
     public static List<Client> toEntities(List<ClientDto> dtos) {
         return dtos.stream()
                    .map(ClientDto::toEntity)
                    .collect(Collectors.toList());
     }
-
-    // --- Getters & setters ---
 
     public Long getId() {
         return id;
@@ -88,9 +80,6 @@ public class ClientDto {
         return name;
     }
 
-    /**
-     * @param name Must contain at least two words (first & last name)
-     */
     public void setName(String name) {
         this.name = name;
     }
@@ -111,9 +100,6 @@ public class ClientDto {
         this.email = email;
     }
 
-    /**
-     * Read‐only: set by the service when creating the client
-     */
     public String getDateAdded() {
         return dateAdded;
     }
@@ -122,9 +108,6 @@ public class ClientDto {
         this.dateAdded = dateAdded;
     }
 
-    /**
-     * Read‐only: generated in the service (first initial + last name)
-     */
     public String getSharedKey() {
         return sharedKey;
     }

@@ -38,7 +38,7 @@ public class ClientServiceTests {
 
         when(clientRepository.findAll()).thenReturn(Collections.singletonList(client));
 
-        var result = clientService.getAllClients();
+        var result = clientService.getAllClients(Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("John Doe");
