@@ -1,11 +1,8 @@
 package com.client.client_management_api.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.client.client_management_api.model.Client;
-import com.client.client_management_api.repository.IClientRepository;
+
+import com.client.client_management_api.dto.ClientDto;
 import com.client.client_management_api.service.ClientService;
 import java.util.List;
 
@@ -14,9 +11,6 @@ import java.util.List;
 @RequestMapping("/api/clients")
 public class ClientController {
 	
-	@Autowired
-    private IClientRepository clientRepository;
-
     private final ClientService clientService;
 
     public ClientController(ClientService clientService) {
@@ -24,18 +18,17 @@ public class ClientController {
     }
 
     @GetMapping
-    public List<Client> getClients() {
+    public List<ClientDto> getClients() {
         return clientService.getAllClients();
     }
 
     @PostMapping
-    public Client addClient(@RequestBody Client client) {
-    	Client savedClient = clientRepository.save(client);
-    	return savedClient;
+    public ClientDto addClient(@RequestBody ClientDto client) {
+    	return clientService.createClient(client);
     }
 
     @PutMapping("/{id}")
-    public Client updateClient(@PathVariable Long id, @RequestBody Client client) {
+    public ClientDto updateClient(@PathVariable Long id, @RequestBody ClientDto client) {
         return clientService.updateClient(id, client);
     }
     

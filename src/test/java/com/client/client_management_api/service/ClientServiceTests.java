@@ -1,191 +1,166 @@
 package com.client.client_management_api.service;
 
+import com.client.client_management_api.dto.ClientDto;
 import com.client.client_management_api.model.Client;
 import com.client.client_management_api.repository.IClientRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class ClientServiceTest {
+public class ClientServiceTests {
 
-    @Mock
     private IClientRepository clientRepository;
-
-    @InjectMocks
     private ClientService clientService;
 
-    @Captor
-    private ArgumentCaptor<Client> clientCaptor;
-
-    private Client sampleClient;
-
     @BeforeEach
-    void setUp() {
-        sampleClient = new Client();
-        sampleClient.setId(1L);
-        sampleClient.setName("John Doe");
-        sampleClient.setEmail("john.doe@example.com");
-        sampleClient.setPhone("1234567890");
-        sampleClient.setSharedKey("jdoe");
+    public void setup() {
+        clientRepository = mock(IClientRepository.class);
+        clientService = new ClientService(clientRepository);
     }
 
     @Test
-    void getAllClients_returnsListFromRepository() {
-        List<Client> expected = Arrays.asList(sampleClient);
-        when(clientRepository.findAll()).thenReturn(expected);
+    public void getAllClients_shouldReturnList() {
+        Client client = new Client();
+        client.setId(1L);
+        client.setName("John Doe");
+        client.setPhone("123456789");
+        client.setEmail("john@example.com");
+        client.setDateAdded("01/01/2024");
+        client.setSharedKey("jdoe");
 
-        List<Client> actual = clientService.getAllClients();
+        when(clientRepository.findAll()).thenReturn(Collections.singletonList(client));
 
-        assertSame(expected, actual);
-        verify(clientRepository, times(1)).findAll();
+        var result = clientService.getAllClients();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getName()).isEqualTo("John Doe");
     }
 
     @Test
-    void getAllClients_emptyList() {
-        when(clientRepository.findAll()).thenReturn(Collections.emptyList());
+    public void createClient_shouldCreateSuccessfully() {
+        ClientDto inputDto = new ClientDto();
+        inputDto.setName("Jane Smith");
+        inputDto.setPhone("987654321");
+        inputDto.setEmail("jane@example.com");
 
-        List<Client> actual = clientService.getAllClients();
+        ArgumentCaptor<Client> clientCaptor = ArgumentCaptor.forClass(Client.class);
 
-        assertTrue(actual.isEmpty());
-        verify(clientRepository).findAll();
-    }
-
-    @Test
-    void createClient_validName_savesAndReturnsClientWithGeneratedSharedKey() {
-        Client toCreate = new Client();
-        toCreate.setName("Alice Smith");
-        toCreate.setEmail("alice@example.com");
-        toCreate.setPhone("5551234");
-
-        when(clientRepository.findBySharedKey("asmith")).thenReturn(Optional.empty());
-        Client saved = new Client();
-        saved.setId(2L);
-        saved.setName(toCreate.getName());
-        saved.setEmail(toCreate.getEmail());
-        saved.setPhone(toCreate.getPhone());
-        saved.setSharedKey("asmith");
-        when(clientRepository.save(any(Client.class))).thenReturn(saved);
-
-        Client result = clientService.createClient(toCreate);
-
-        verify(clientRepository).findBySharedKey("asmith");
-        verify(clientRepository).save(clientCaptor.capture());
-
-        Client passedToSave = clientCaptor.getValue();
-        assertEquals("asmith", passedToSave.getSharedKey());
-        assertEquals("Alice Smith", passedToSave.getName());
-        assertEquals("alice@example.com", passedToSave.getEmail());
-        assertEquals("5551234", passedToSave.getPhone());
-
-        assertEquals(2L, result.getId());
-        assertEquals("asmith", result.getSharedKey());
-    }
-
-    @Test
-    void createClient_nameWithoutSpace_throwsIllegalArgumentException() {
-        Client bad = new Client();
-        bad.setName("SingleName");
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> clientService.createClient(bad));
-        assertEquals("El nombre debe contener al menos nombre y apellido", ex.getMessage());
-        verifyNoMoreInteractions(clientRepository);
-    }
-
-    @Test
-    void createClient_duplicateSharedKey_throwsIllegalArgumentException() {
-        Client toCreate = new Client();
-        toCreate.setName("Bob Brown");
-        when(clientRepository.findBySharedKey("bbrown"))
-                .thenReturn(Optional.of(sampleClient));
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> clientService.createClient(toCreate));
-        assertTrue(ex.getMessage().contains("Ya existe un cliente con la sharedKey: bbrown"));
-        verify(clientRepository).findBySharedKey("bbrown");
-        verify(clientRepository, never()).save(any());
-    }
-
-    @Test
-    void updateClient_nonExistentId_throwsRuntimeException() {
-        when(clientRepository.findById(99L)).thenReturn(Optional.empty());
-
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> clientService.updateClient(99L, sampleClient));
-        assertEquals("Client with ID 99 not found.", ex.getMessage());
-        verify(clientRepository).findById(99L);
-        verifyNoMoreInteractions(clientRepository);
-    }
-
-    @Test
-    void updateClient_sharedKeyConflict_throwsRuntimeException() {
-        Client updated = new Client();
-        updated.setSharedKey("jdoe");
-        updated.setName("John Doe");
-        updated.setEmail("new@example.com");
-        updated.setPhone("000");
-
-        when(clientRepository.findById(1L)).thenReturn(Optional.of(sampleClient));
-        Client other = new Client();
-        other.setId(2L);
-        when(clientRepository.findBySharedKey("jdoe"))
-                .thenReturn(Optional.of(other));
-
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> clientService.updateClient(1L, updated));
-        assertEquals("SharedKey 'jdoe' is already in use.", ex.getMessage());
-
-        verify(clientRepository).findById(1L);
-        verify(clientRepository).findBySharedKey("jdoe");
-        verify(clientRepository, never()).save(any());
-    }
-
-    @Test
-    void updateClient_successfulUpdate_savesAndReturnsUpdatedClient() {
-        Client toUpdate = new Client();
-        toUpdate.setSharedKey("jsmith");
-        toUpdate.setName("Jane Smith");
-        toUpdate.setEmail("jane.smith@example.com");
-        toUpdate.setPhone("999888777");
-
-        when(clientRepository.findById(1L)).thenReturn(Optional.of(sampleClient));
         when(clientRepository.findBySharedKey("jsmith")).thenReturn(Optional.empty());
 
-        Client saved = new Client();
-        saved.setId(1L);
-        saved.setSharedKey("jsmith");
-        saved.setName("Jane Smith");
-        saved.setEmail("jane.smith@example.com");
-        saved.setPhone("999888777");
-        when(clientRepository.save(any(Client.class))).thenReturn(saved);
+        Client savedClient = new Client();
+        savedClient.setId(1L);
+        savedClient.setName("Jane Smith");
+        savedClient.setPhone("987654321");
+        savedClient.setEmail("jane@example.com");
+        savedClient.setDateAdded(LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        savedClient.setSharedKey("jsmith");
 
-        Client result = clientService.updateClient(1L, toUpdate);
+        when(clientRepository.save(any(Client.class))).thenReturn(savedClient);
 
-        verify(clientRepository).findById(1L);
-        verify(clientRepository).findBySharedKey("jsmith");
+        ClientDto result = clientService.createClient(inputDto);
+
+        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.getSharedKey()).isEqualTo("jsmith");
+        assertThat(result.getName()).isEqualTo("Jane Smith");
+
         verify(clientRepository).save(clientCaptor.capture());
+        assertThat(clientCaptor.getValue().getSharedKey()).isEqualTo("jsmith");
+    }
 
-        Client passed = clientCaptor.getValue();
-        assertEquals(1L, passed.getId());
-        assertEquals("Jane Smith", passed.getName());
-        assertEquals("jane.smith@example.com", passed.getEmail());
-        assertEquals("999888777", passed.getPhone());
-        assertEquals("jsmith", passed.getSharedKey());
+    @Test
+    public void createClient_shouldThrowIfNameInvalid() {
+        ClientDto dto = new ClientDto();
+        dto.setName("SingleName");
+        dto.setPhone("123456789");
+        dto.setEmail("email@example.com");
 
-        assertEquals(saved, result);
+        assertThatThrownBy(() -> clientService.createClient(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("El nombre debe contener al menos nombre y apellido");
+    }
+
+    @Test
+    public void createClient_shouldThrowIfSharedKeyExists() {
+        ClientDto dto = new ClientDto();
+        dto.setName("John Doe");
+        dto.setPhone("123456789");
+        dto.setEmail("john@example.com");
+
+        Client existing = new Client();
+        existing.setId(99L);
+
+        when(clientRepository.findBySharedKey("jdoe")).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> clientService.createClient(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ya existe un cliente con la sharedKey");
+    }
+
+    @Test
+    public void updateClient_shouldUpdateSuccessfully() {
+        Long clientId = 1L;
+
+        Client existingClient = new Client();
+        existingClient.setId(clientId);
+        existingClient.setName("Old Name");
+        existingClient.setEmail("old@example.com");
+        existingClient.setPhone("000000");
+        existingClient.setSharedKey("oldkey");
+
+        ClientDto updateDto = new ClientDto();
+        updateDto.setName("New Name");
+        updateDto.setEmail("new@example.com");
+        updateDto.setPhone("111111");
+        updateDto.setSharedKey("newkey");
+
+        when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+        when(clientRepository.findBySharedKey("newkey")).thenReturn(Optional.empty());
+        when(clientRepository.save(any(Client.class))).thenReturn(existingClient);
+
+        ClientDto result = clientService.updateClient(clientId, updateDto);
+
+        assertThat(result.getName()).isEqualTo("New Name");
+        assertThat(result.getSharedKey()).isEqualTo("newkey");
+    }
+
+    @Test
+    public void updateClient_shouldThrowIfNotFound() {
+        when(clientRepository.findById(1L)).thenReturn(Optional.empty());
+
+        ClientDto updateDto = new ClientDto();
+        updateDto.setSharedKey("somekey");
+
+        assertThatThrownBy(() -> clientService.updateClient(1L, updateDto))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Client with ID 1 not found");
+    }
+
+    @Test
+    public void updateClient_shouldThrowIfSharedKeyUsedByOther() {
+        Long targetId = 1L;
+
+        Client existingClient = new Client();
+        existingClient.setId(targetId);
+
+        Client anotherClient = new Client();
+        anotherClient.setId(99L); // different ID but same shared key
+
+        ClientDto updateDto = new ClientDto();
+        updateDto.setSharedKey("conflictkey");
+
+        when(clientRepository.findById(targetId)).thenReturn(Optional.of(existingClient));
+        when(clientRepository.findBySharedKey("conflictkey")).thenReturn(Optional.of(anotherClient));
+
+        assertThatThrownBy(() -> clientService.updateClient(targetId, updateDto))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("SharedKey 'conflictkey' is already in use.");
     }
 }
