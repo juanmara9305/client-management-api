@@ -3,11 +3,8 @@ package com.client.client_management_api.service;
 import com.client.client_management_api.dto.ClientDto;
 import com.client.client_management_api.model.Client;
 import com.client.client_management_api.repository.IClientRepository;
-
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
-import jakarta.transaction.Transactional;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.jpa.domain.Specification;
